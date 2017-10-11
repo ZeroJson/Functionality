@@ -9,6 +9,7 @@
 #import "ViewController.h"
 #import <AVFoundation/AVFoundation.h>
 #import <Speech/Speech.h>
+#import <MediaPlayer/MediaPlayer.h>
 /*资料贡献
  http://www.jianshu.com/p/9cd581e53256  AVSpeechUtterance类详解
  
@@ -28,6 +29,14 @@
 
 
 @property (nonatomic, strong)AVSpeechSynthesizer *synth;
+
+@property (nonatomic, strong)MPVolumeView *volumeView;
+@property (nonatomic, strong)UISlider *volumeSlider;
+@property (nonatomic, strong)UISlider *showVolueSlider;
+@property (nonatomic, assign) float volumeValue;
+
+@property (nonatomic, assign) float volValue;
+
 @end
 
 @implementation ViewController
@@ -45,6 +54,8 @@
 }
 
 - (void)btnClick{
+    [self controlVolume];
+
     //设置语音播报的模式 主要处理静音模式
     [[AVAudioSession sharedInstance]setCategory:AVAudioSessionCategoryPlayback withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:nil];
     [[AVAudioSession sharedInstance]setActive:YES error:nil];
@@ -61,6 +72,41 @@
     
     [_synth speakUtterance:utterance];
 }
+
+-(void)controlVolume{
+    _volumeView = [[MPVolumeView alloc]init];
+    _volumeView.showsRouteButton = NO;
+    //默认YES，这里为了突出，故意设置一遍
+    _volumeView.showsVolumeSlider = YES;
+    
+    [_volumeView sizeToFit];
+    [_volumeView setFrame:CGRectMake(-100, -100, 10, 10)];
+    
+    [_volumeView userActivity];
+    
+    for (UIView *view in [_volumeView subviews]){
+        if ([[view.class description] isEqualToString:@"MPVolumeSlider"]){
+            _volumeSlider = (UISlider*)view;
+            
+            break;
+        }
+    }
+    //输出当前音量 保存 改变后再改回之前音量
+    _volValue = [[AVAudioSession sharedInstance] outputVolume];
+    
+    //设置默认打开视频时声音为0.3，如果不设置的话，获取的当前声音始终是0
+    [_volumeSlider setValue:1];
+    
+    //获取最是刚打开时的音量值
+    _volumeValue = _volumeSlider.value;
+    
+    //设置展示音量条的值
+    
+    _showVolueSlider.value = _volumeValue;
+    
+}
+
+
 - (void)handleInterruption:(NSNotification *)notificaiton{
     NSLog(@"%@",notificaiton.userInfo);
     AVAudioSessionInterruptionType type = [notificaiton.userInfo[AVAudioSessionInterruptionTypeKey] intValue];
@@ -76,6 +122,7 @@
 //播报结束后 关闭播报线程  继续播放音乐
 - (void)speechSynthesizer:(AVSpeechSynthesizer*)synthesizer didFinishSpeechUtterance:(AVSpeechUtterance*)utterance{
     [[AVAudioSession sharedInstance] setActive:NO error:nil];
+    [_volumeSlider setValue:_volValue];//恢复之前音量
 }
 
 @end
